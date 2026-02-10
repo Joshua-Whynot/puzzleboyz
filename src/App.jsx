@@ -12,6 +12,15 @@ const images = Object.entries(imageFiles)
     })
     .sort((a, b) => a.num - b.num)
 
+// Set random favicon from loaded images
+if (images.length > 0) {
+    const randomImage = images[Math.floor(Math.random() * images.length)]
+    const favicon = document.getElementById('favicon')
+    if (favicon) {
+        favicon.href = randomImage.src
+    }
+}
+
 function App() {
     return (
         <div className="app">
