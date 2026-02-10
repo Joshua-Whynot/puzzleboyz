@@ -1,10 +1,17 @@
 import { useState } from 'react'
 
-function ImageGallery({ images }) {
+function ImageGallery({ latestImage, images }) {
     const [selectedImage, setSelectedImage] = useState(null)
 
     return (
         <>
+            {latestImage && (
+                <div className="featured-image" onClick={() => setSelectedImage(latestImage)}>
+                    <img src={latestImage.src} alt={latestImage.caption || 'Latest puzzle'} />
+                    {latestImage.caption && <div className="featured-caption">{latestImage.caption}</div>}
+                </div>
+            )}
+
             <div className="gallery">
                 {images.map((image, index) => (
                     <div

@@ -22,10 +22,12 @@ if (images.length > 0) {
 }
 
 function App() {
+    const [latestImage, ...olderImages] = images
+
     return (
         <div className="app">
             <h1 className="title">Puzzle Boyz</h1>
-            <ImageGallery images={images} />
+            <ImageGallery latestImage={latestImage} images={olderImages} />
         </div>
     )
 }
