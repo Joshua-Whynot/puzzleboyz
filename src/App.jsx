@@ -8,7 +8,7 @@ const images = Object.entries(imageFiles)
     .map(([path, src]) => {
         const filename = path.split('/').pop()
         const num = parseInt(filename.match(/pb(\d+)/)?.[1] || '0', 10)
-        return { src, num, caption: `Picture ${num}` }
+        return { src, num, caption: `Day ${num}` }
     })
     .sort((a, b) => a.num - b.num)
 
