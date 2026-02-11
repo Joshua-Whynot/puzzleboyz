@@ -1,4 +1,5 @@
 import AudioOnJoin from './components/AudioOnJoin'
+import Chat from './components/Chat'
 import ImageGallery from './components/ImageGallery'
 
 // Dynamically import all images from the images folder
@@ -30,6 +31,7 @@ function App() {
             <h1 className="title">Puzzle Boyz</h1>
             <AudioOnJoin src="/audio/join.mp3" />
             <ImageGallery latestImage={latestImage} images={olderImages} />
+            <Chat />
         </div>
     )
 }
