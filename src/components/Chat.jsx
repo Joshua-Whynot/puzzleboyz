@@ -6,6 +6,20 @@ const ANIMAL_NAMES = [
     '猴子', '龟', '鲤鱼', '燕子', '狐狸',
 ]
 
+// Pool of random Chinese phrases for the fake bots
+const CHINESE_PHRASES = [
+    '你好世界', '今天天气很好', '拼图太难了', '我喜欢拼图',
+    '大家好', '哈哈哈', '加油加油', '太厉害了',
+    '这个拼图很有趣', '我们是拼图男孩', '龙年大吉',
+    '恭喜发财', '好运来了', '一起拼图吧', '厉害厉害',
+    '真的吗', '太棒了', '继续努力', '我来了',
+    '谁在这里', '晚上好', '早上好', '下午好',
+    '拼图完成了', '还差一点', '快完成了', '好难啊',
+    '不错不错', '很漂亮', '开心', '今天很开心',
+    '明天见', '再来一个', '我最厉害', '你们好厉害',
+    '一起加油', '拼图之王', '这个颜色好看', '差不多了',
+]
+
 function getRandomName() {
     const animal = ANIMAL_NAMES[Math.floor(Math.random() * ANIMAL_NAMES.length)]
     const num = Math.floor(Math.random() * 99) + 1
@@ -26,19 +40,25 @@ function formatTime(ts) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+function randomPhrase() {
+    return CHINESE_PHRASES[Math.floor(Math.random() * CHINESE_PHRASES.length)]
+}
+
+// Generate a few fake bot names on mount
+function makeBots(count = 4) {
+    return Array.from({ length: count }, () => getRandomName())
+}
+
 export default function Chat() {
     const [messages, setMessages] = useState([])
     const [input, setInput] = useState('')
     const [name, setName] = useState(getStoredName)
-    const [onlineCount, setOnlineCount] = useState(0)
-    const [connected, setConnected] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
     const [editingName, setEditingName] = useState(false)
     const [nameInput, setNameInput] = useState('')
-    const wsRef = useRef(null)
     const messagesEndRef = useRef(null)
-    const reconnectTimer = useRef(null)
-    const closedIntentionally = useRef(false)
+    const botsRef = useRef(makeBots())
+    const botTimerRef = useRef(null)
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -48,94 +68,44 @@ export default function Chat() {
         scrollToBottom()
     }, [messages, scrollToBottom])
 
+    // Fake bot messages at random intervals
     useEffect(() => {
-        closedIntentionally.current = false
-
-        function connect() {
-            // Close any existing connection first
-            if (wsRef.current) {
-                wsRef.current.onclose = null
-                wsRef.current.close()
-                wsRef.current = null
-            }
-
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-            const wsUrl = import.meta.env.PROD
-                ? `${protocol}//${window.location.host}`
-                : `ws://localhost:3001`
-
-            const ws = new WebSocket(wsUrl)
-            wsRef.current = ws
-
-            ws.onopen = () => {
-                setConnected(true)
-            }
-
-            ws.onmessage = (e) => {
-                try {
-                    const data = JSON.parse(e.data)
-                    if (data.type === 'chat') {
-                        setMessages((prev) => {
-                            if (data.id && prev.some((m) => m.id === data.id)) return prev
-                            return [...prev, data]
-                        })
-                    } else if (data.type === 'history') {
-                        setMessages(data.messages)
-                    } else if (data.type === 'online') {
-                        setOnlineCount(data.count)
-                    }
-                } catch {
-                    // Ignore
-                }
-            }
-
-            ws.onclose = () => {
-                setConnected(false)
-                // Only reconnect if we didn't close on purpose
-                if (!closedIntentionally.current) {
-                    reconnectTimer.current = setTimeout(connect, 3000)
-                }
-            }
-
-            ws.onerror = () => {
-                ws.close()
-            }
+        function scheduleBot() {
+            const delay = 3000 + Math.random() * 8000 // 3-11 seconds
+            botTimerRef.current = setTimeout(() => {
+                const botName = botsRef.current[Math.floor(Math.random() * botsRef.current.length)]
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                        name: botName,
+                        text: randomPhrase(),
+                        timestamp: Date.now(),
+                    },
+                ])
+                scheduleBot()
+            }, delay)
         }
 
-        connect()
+        scheduleBot()
 
-        return () => {
-            closedIntentionally.current = true
-            clearTimeout(reconnectTimer.current)
-            if (wsRef.current) {
-                wsRef.current.onclose = null
-                wsRef.current.close()
-                wsRef.current = null
-            }
-        }
+        return () => clearTimeout(botTimerRef.current)
     }, [])
 
     const sendMessage = (e) => {
         e.preventDefault()
         const text = input.trim()
-        if (!text || !wsRef.current || wsRef.current.readyState !== 1) return
+        if (!text) return
 
-        const localMsg = {
-            type: 'chat',
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            name,
-            text,
-            timestamp: Date.now(),
-        }
-
-        // Add locally so we see it immediately
-        setMessages((prev) => [...prev, localMsg])
-
-        wsRef.current.send(JSON.stringify({
-            type: 'chat',
-            name,
-            text,
-        }))
+        setMessages((prev) => [
+            ...prev,
+            {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                name,
+                text,
+                timestamp: Date.now(),
+            },
+        ])
         setInput('')
     }
 
@@ -148,31 +118,30 @@ export default function Chat() {
         setEditingName(false)
     }
 
+    const fakeOnline = botsRef.current.length + 1
+
     return (
         <div className={`chat-widget ${isOpen ? 'chat-open' : 'chat-closed'}`}>
-            {/* Toggle button */}
             <button
                 className="chat-toggle"
                 onClick={() => setIsOpen((prev) => !prev)}
                 aria-label={isOpen ? 'Close chat' : 'Open chat'}
             >
                 {isOpen ? '✕' : '💬'}
-                {!isOpen && onlineCount > 0 && (
-                    <span className="chat-badge">{onlineCount}</span>
+                {!isOpen && (
+                    <span className="chat-badge">{fakeOnline}</span>
                 )}
             </button>
 
             {isOpen && (
                 <div className="chat-panel">
-                    {/* Header */}
                     <div className="chat-header">
                         <span className="chat-title">茶馆 Chat</span>
-                        <span className={`chat-status ${connected ? 'chat-connected' : 'chat-disconnected'}`}>
-                            {connected ? `${onlineCount} online` : 'reconnecting...'}
+                        <span className="chat-status chat-connected">
+                            {fakeOnline} online
                         </span>
                     </div>
 
-                    {/* Name bar */}
                     <div className="chat-name-bar">
                         {editingName ? (
                             <form onSubmit={(e) => { e.preventDefault(); handleNameSave() }} className="chat-name-form">
@@ -197,14 +166,13 @@ export default function Chat() {
                         )}
                     </div>
 
-                    {/* Messages */}
                     <div className="chat-messages">
                         {messages.length === 0 && (
                             <div className="chat-empty">No messages yet. Say hello!</div>
                         )}
                         {messages.map((msg, i) => (
                             <div
-                                key={i}
+                                key={msg.id || i}
                                 className={`chat-msg ${msg.name === name ? 'chat-msg-self' : ''}`}
                             >
                                 <span className="chat-msg-name">{msg.name}</span>
@@ -215,7 +183,6 @@ export default function Chat() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Input */}
                     <form className="chat-input-bar" onSubmit={sendMessage}>
                         <input
                             className="chat-input"
@@ -223,12 +190,11 @@ export default function Chat() {
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Type a message..."
                             maxLength={500}
-                            disabled={!connected}
                         />
                         <button
                             type="submit"
                             className="chat-send"
-                            disabled={!connected || !input.trim()}
+                            disabled={!input.trim()}
                         >
                             发送
                         </button>
