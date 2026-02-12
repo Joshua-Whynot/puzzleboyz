@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 const WS_URL =
-    import.meta.env.VITE_WS_URL ||
-    "https://stunnedly-unabrogated-sadye.ngrok-free.dev";
+    import.meta.env.VITE_WS_URL || "https://b3f3-24-180-127-36.ngrok-free.app";
 
 function getStoredName() {
     if (typeof window === "undefined") return "";
