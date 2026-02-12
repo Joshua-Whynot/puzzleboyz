@@ -20,6 +20,8 @@ export default function Chat() {
     const [nameInput, setNameInput] = useState(getStoredName());
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState([]);
+    const [isOpen, setIsOpen] = useState(true);
+    const messagesEndRef = useRef(null);
 
     useEffect(() => {
         const socket = io(WS_URL, { transports: ["websocket"] });
@@ -72,6 +74,13 @@ export default function Chat() {
         }
     };
 
+    // Auto-scroll to bottom when messages change
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages, isOpen]);
+
     return (
         <div className="chat-widget">
             <div className="chat-panel">
@@ -80,80 +89,114 @@ export default function Chat() {
                     <span className={`chat-status chat-${status}`}>
                         {status}
                     </span>
+                    <button
+                        className="chat-toggle"
+                        onClick={() => setIsOpen((prev) => !prev)}
+                        aria-label={isOpen ? "Minimize chat" : "Open chat"}
+                        style={{
+                            marginLeft: "auto",
+                            background: "none",
+                            border: "none",
+                            color: "#f5e6cc",
+                            fontSize: "1.2rem",
+                            cursor: "pointer",
+                        }}
+                    >
+                        {isOpen ? "—" : "💬"}
+                    </button>
                 </div>
-                <div className="chat-name-bar">
-                    {editingName ? (
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                handleNameSave();
-                            }}
-                            className="chat-name-form"
+                {isOpen && (
+                    <>
+                        <div className="chat-name-bar">
+                            {editingName ? (
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        handleNameSave();
+                                    }}
+                                    className="chat-name-form"
+                                >
+                                    <input
+                                        className="chat-name-input"
+                                        value={nameInput}
+                                        onChange={(e) =>
+                                            setNameInput(e.target.value)
+                                        }
+                                        maxLength={30}
+                                        autoFocus
+                                        placeholder="Enter name..."
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="chat-name-save"
+                                    >
+                                        ✓
+                                    </button>
+                                </form>
+                            ) : (
+                                <button
+                                    className="chat-name-display"
+                                    onClick={() => setEditingName(true)}
+                                    title="Click to change name"
+                                >
+                                    {username} ✎
+                                </button>
+                            )}
+                        </div>
+                        <div
+                            className="chat-messages"
+                            style={{ overflowY: "auto" }}
                         >
+                            {messages.length === 0 && (
+                                <div className="chat-empty">
+                                    No messages yet. Say hello!
+                                </div>
+                            )}
+                            {messages.map((msg, i) => (
+                                <div
+                                    key={i}
+                                    className={`chat-msg ${
+                                        msg.username === username
+                                            ? "chat-msg-self"
+                                            : ""
+                                    }`}
+                                >
+                                    <span className="chat-msg-name">
+                                        {msg.username}
+                                    </span>
+                                    <span className="chat-msg-text">
+                                        {msg.message}
+                                    </span>
+                                </div>
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </div>
+                        <form className="chat-input-bar" onSubmit={sendMessage}>
                             <input
-                                className="chat-name-input"
-                                value={nameInput}
-                                onChange={(e) => setNameInput(e.target.value)}
-                                maxLength={30}
-                                autoFocus
-                                placeholder="Enter name..."
+                                className="chat-input"
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                placeholder="Type a message..."
+                                maxLength={500}
+                                disabled={!username}
                             />
-                            <button type="submit" className="chat-name-save">
-                                ✓
+                            <button
+                                type="submit"
+                                className="chat-send"
+                                disabled={!input.trim() || !username}
+                            >
+                                发送
                             </button>
                         </form>
-                    ) : (
-                        <button
-                            className="chat-name-display"
-                            onClick={() => setEditingName(true)}
-                            title="Click to change name"
-                        >
-                            {username} ✎
-                        </button>
-                    )}
-                </div>
-                <div className="chat-messages">
-                    {messages.length === 0 && (
-                        <div className="chat-empty">
-                            No messages yet. Say hello!
-                        </div>
-                    )}
-                    {messages.map((msg, i) => (
-                        <div
-                            key={i}
-                            className={`chat-msg ${
-                                msg.username === username ? "chat-msg-self" : ""
-                            }`}
-                        >
-                            <span className="chat-msg-name">
-                                {msg.username}
-                            </span>
-                            <span className="chat-msg-text">{msg.message}</span>
-                        </div>
-                    ))}
-                </div>
-                <form className="chat-input-bar" onSubmit={sendMessage}>
-                    <input
-                        className="chat-input"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Type a message..."
-                        maxLength={500}
-                        disabled={!username}
-                    />
-                    <button
-                        type="submit"
-                        className="chat-send"
-                        disabled={!input.trim() || !username}
-                    >
-                        发送
-                    </button>
-                </form>
-                {connectError && (
-                    <div className="chat-msg chat-msg-error">
-                        <span className="chat-msg-name">Error</span>
-                        <span className="chat-msg-text">{connectError}</span>
-                    </div>
+                        {connectError && (
+                            <div className="chat-msg chat-msg-error">
+                                <span className="chat-msg-name">Error</span>
+                                <span className="chat-msg-text">
+                                    {connectError}
+                                </span>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>
