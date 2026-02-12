@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "http://localhost:3000";
+const WS_URL =
+    import.meta.env.VITE_WS_URL ||
+    "https://stunnedly-unabrogated-sadye.ngrok-free.dev/";
 
 function getStoredName() {
     if (typeof window === "undefined") return "";
